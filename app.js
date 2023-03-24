@@ -102,6 +102,9 @@ app.post("/login", async (req,res)=>{
             if (foundUser.password === userPassword){
                 res.render("secrets");
             }
+            else{
+                res.render("login");
+            }
         }
     } catch (error) {
         console.log(error);
