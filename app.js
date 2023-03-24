@@ -56,15 +56,26 @@ app.get("/", async (req, res)=>{
     }    
 });
 
-//Render the Login page while someone hits the Login URI
+//Render the Login page while someone hits the Login Route
 app.get("/login", async (req, res)=>{
     res.render("login");
 });
 
-//Render the Register page while someone hits the Register URI
+//Render the Register page while someone hits the Register Route
 app.get("/register", async (req, res)=>{
     res.render("register");
 });
+
+//Render the Logout page while someone hits the Logout Route
+app.get("/logout", async (req, res)=>{
+    res.render("logout");
+});
+
+//Render the Submit secrets page while someone hits the Submit Route
+app.get("/submit", async (req, res)=>{
+    res.render("submit");
+});
+
 
 //Accept the login credentials and register them post page upon submissions
 
