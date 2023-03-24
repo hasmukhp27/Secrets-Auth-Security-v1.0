@@ -13,6 +13,7 @@ app.set('view engine', 'ejs');
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(express.static("public"));
 
+//Render the Home page while someone hits the base URI
 app.get("/", async (req, res)=>{
     try {
         res.render("home");    
@@ -22,10 +23,12 @@ app.get("/", async (req, res)=>{
     
 });
 
+//Render the Login page while someone hits the Login URI
 app.get("/login", async (req, res)=>{
     res.render("login");
 });
 
+//Render the Register page while someone hits the Register URI
 app.get("/register", async (req, res)=>{
     res.render("register");
 });
