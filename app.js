@@ -34,7 +34,7 @@ async function main() {
     }    
 };
 
-const userSchema = {
+const userSchema = new mongoose.Schema ({
     email : {
         type: String,
         required: [true, 'Can not allow null user email']
@@ -43,9 +43,9 @@ const userSchema = {
         type: String,
         required: [true, 'Can not allow null password']
     }
-};
+});
 
-const User = mongoose.Model("User",userSchema);
+const User = mongoose.model("User",userSchema);
 
 //Render the Home page while someone hits the base URI
 app.get("/", async (req, res)=>{
