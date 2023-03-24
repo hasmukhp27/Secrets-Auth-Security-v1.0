@@ -70,7 +70,7 @@ app.get("/register", async (req, res)=>{
 
 app.post("/register", async (req,res)=>{
     const newUser = new User({
-        email: req.body.email,
+        email: req.body.username,
         password: req.body.password
     });
 
@@ -83,7 +83,7 @@ app.post("/register", async (req,res)=>{
 });
 
 app.post("/login", async (req,res)=>{
-    const userEmail = req.body.email;
+    const userEmail = req.body.username;
     const userPassword = req.body.password;
     try {
         const foundUser = await User.findOne({email: userEmail});
