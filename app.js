@@ -66,7 +66,36 @@ app.get("/register", async (req, res)=>{
     res.render("register");
 });
 
-//Accept he login post page upon submissions
+//Accept the login credentials and register them post page upon submissions
+
+app.post("/register", async (req,res)=>{
+    const newUser = new User({
+        email: req.body.email,
+        password: req.body.password
+    });
+
+    try {        
+        let result = await newUser.save();
+        res.render("login");    
+    } catch (error) {
+        console.log(error);
+    }   
+});
+
+app.post("/login", async (req,res)=>{
+    const userEmail = req.body.email;
+    const userPassword = req.body.password;
+    try {
+        const foundUser = await User.findOne({email: userEmail});
+        if(foundUser){
+            if (foundUser.password === userPassword){
+                res.render("secrets");
+            }
+        }
+    } catch (error) {
+        console.log(error);
+    }
+});
 
 
 
