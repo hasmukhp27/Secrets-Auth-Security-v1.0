@@ -68,7 +68,7 @@ app.get("/register", async (req, res)=>{
 
 //Render the Logout page while someone hits the Logout Route
 app.get("/logout", async (req, res)=>{
-    res.render("logout");
+    res.render("home");
 });
 
 //Render the Submit secrets page while someone hits the Submit Route
