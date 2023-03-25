@@ -2,6 +2,7 @@ const express = require('express');
 const ejs = require('ejs');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
+const encrypt = require('mongoose-encryption');
 require('dotenv').config();
 
 //Setting up MongoDB COnnections and it's values through process envirnment variables. 
@@ -44,6 +45,9 @@ const userSchema = new mongoose.Schema ({
         required: [true, 'Can not allow null password']
     }
 });
+
+const secret = "Thisisoursecretkeyforencryption.";
+userSchema.plugin(encrypt,{ secret : secret , encryptedFields: ['password']});
 
 const User = mongoose.model("User",userSchema);
 
