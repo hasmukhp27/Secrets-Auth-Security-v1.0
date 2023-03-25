@@ -1,9 +1,10 @@
+require('dotenv').config();
 const express = require('express');
 const ejs = require('ejs');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
-const encrypt = require('mongoose-encryption');
-require('dotenv').config();
+const sha1 = require('sha1');
+
 
 //Setting up MongoDB COnnections and it's values through process envirnment variables. 
 const srvURL = process.env.N1_URL || "127.0.0.1:27017";
@@ -46,8 +47,9 @@ const userSchema = new mongoose.Schema ({
     }
 });
 
-const secret = "Thisisoursecretkeyforencryption.";
-userSchema.plugin(encrypt,{ secret : secret , encryptedFields: ['password']});
+const secret = process.env.SECRET;
+
+//userSchema.plugin(encrypt,{ secret : secret , encryptedFields: ['password']});
 
 const User = mongoose.model("User",userSchema);
 
@@ -86,7 +88,7 @@ app.get("/submit", async (req, res)=>{
 app.post("/register", async (req,res)=>{
     const newUser = new User({
         email: req.body.username,
-        password: req.body.password
+        password: sha1(req.body.password)
     });
 
     try {        
@@ -99,7 +101,7 @@ app.post("/register", async (req,res)=>{
 
 app.post("/login", async (req,res)=>{
     const userEmail = req.body.username;
-    const userPassword = req.body.password;
+    const userPassword = sha1(req.body.password);
     try {
         const foundUser = await User.findOne({email: userEmail});
         if(foundUser){
