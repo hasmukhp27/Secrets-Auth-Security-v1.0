@@ -3,7 +3,8 @@ const express = require('express');
 const ejs = require('ejs');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
-const sha1 = require('sha1');
+const bcrypt = require('bcrypt');
+const saltRounds = 12;
 
 
 //Setting up MongoDB COnnections and it's values through process envirnment variables. 
@@ -86,26 +87,32 @@ app.get("/submit", async (req, res)=>{
 //Accept the login credentials and register them post page upon submissions
 
 app.post("/register", async (req,res)=>{
-    const newUser = new User({
-        email: req.body.username,
-        password: sha1(req.body.password)
+    bcrypt.hash(req.body.password, saltRounds, (err, hash)=>{
+        const newUser = new User({
+            email: req.body.username,
+            password: hash
+        });
+    
+        try {        
+            let result = newUser.save();
+            res.render("login");    
+        } catch (error) {
+            console.log(error);
+        }   
     });
 
-    try {        
-        let result = await newUser.save();
-        res.render("login");    
-    } catch (error) {
-        console.log(error);
-    }   
+    
 });
 
 app.post("/login", async (req,res)=>{
     const userEmail = req.body.username;
-    const userPassword = sha1(req.body.password);
+    const userPassword = req.body.password;
     try {
         const foundUser = await User.findOne({email: userEmail});
         if(foundUser){
-            if (foundUser.password === userPassword){
+            const match = await bcrypt.compare(userPassword, foundUser.password);
+
+            if (match){
                 res.render("secrets");
             }
             else{
