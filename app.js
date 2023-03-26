@@ -3,8 +3,10 @@ const express = require('express');
 const ejs = require('ejs');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
-const bcrypt = require('bcrypt');
-const saltRounds = 12;
+const session = require('express-session');
+const passport = require('passport');
+const passportLocalMongoose = require('passport-local-mongoose');
+
 
 
 //Setting up MongoDB COnnections and it's values through process envirnment variables. 
@@ -24,6 +26,15 @@ app.set('view engine', 'ejs');
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(express.static("public"));
 
+app.use(session({
+    secret: "This is our little secret!",
+    resave: false,
+    saveUninitialized: false
+}));
+
+app.use(passport.initialize());
+app.use(passport.session());
+
 const mongoDB = "mongodb://"+dbUser+":"+dbPasswd+"@"+srvURL+"/"+dbName;
 //const mongoDB = 'mongodb+srv://'+dbUser+':'+dbPasswd+'@'+srvURL+'/'+dbName+'?retryWrites=true&w=majority';
 
@@ -40,19 +51,24 @@ async function main() {
 const userSchema = new mongoose.Schema ({
     email : {
         type: String,
-        required: [true, 'Can not allow null user email']
+        //required: [true, 'Can not allow null user email']
     },
     password: {
         type: String,
-        required: [true, 'Can not allow null password']
+        //required: [true, 'Can not allow null password']
     }
 });
 
-const secret = process.env.SECRET;
-
+//const secret = process.env.SECRET;
+userSchema.plugin(passportLocalMongoose);
 //userSchema.plugin(encrypt,{ secret : secret , encryptedFields: ['password']});
 
 const User = mongoose.model("User",userSchema);
+
+passport.use(User.createStrategy());
+
+passport.serializeUser(User.serializeUser());
+passport.deserializeUser(User.deserializeUser());
 
 //Render the Home page while someone hits the base URI
 app.get("/", async (req, res)=>{
@@ -75,7 +91,10 @@ app.get("/register", async (req, res)=>{
 
 //Render the Logout page while someone hits the Logout Route
 app.get("/logout", async (req, res)=>{
-    res.render("home");
+    req.logout((err)=>{
+        if (err) { return next(err); }
+        res.redirect('/');
+    });
 });
 
 //Render the Submit secrets page while someone hits the Submit Route
@@ -83,47 +102,82 @@ app.get("/submit", async (req, res)=>{
     res.render("submit");
 });
 
+//Render the Secrets page only if someone's Authenticated with Passport JS middleware
+
+app.get("/secrets", async (req,res)=>{
+    if (req.isAuthenticated()){
+        res.render("secrets");
+    }else{
+        res.redirect("/login");
+    }
+});
 
 //Accept the login credentials and register them post page upon submissions
 
 app.post("/register", async (req,res)=>{
-    bcrypt.hash(req.body.password, saltRounds, (err, hash)=>{
-        const newUser = new User({
-            email: req.body.username,
-            password: hash
-        });
-    
-        try {        
-            let result = newUser.save();
-            res.render("login");    
-        } catch (error) {
-            console.log(error);
-        }   
-    });
-
-    
-});
-
-app.post("/login", async (req,res)=>{
     const userEmail = req.body.username;
     const userPassword = req.body.password;
-    try {
-        const foundUser = await User.findOne({email: userEmail});
-        if(foundUser){
-            const match = await bcrypt.compare(userPassword, foundUser.password);
-
-            if (match){
-                res.render("secrets");
-            }
-            else{
-                res.render("login");
-            }
-        }
+    console.log("User provided following inputs -->"+userEmail+" and "+userPassword);
+    /* try {
+        const registrationResult = User.register({username: userEmail}, userPassword);
+        console.log(registrationResult + "2");
+        passport.authenticate("local")(req, res, function(){
+            res.redirect("/secrets");
+        });
     } catch (error) {
-        console.log(error);
-    }
+        console.log(error+"I'm in Error Catch Mode");
+        res.redirect("/register");
+    } */
+
+    User.register({username: userEmail}, userPassword, (err, user)=>{
+        if(err){
+            console.log(err);
+            res.redirect("/register");
+        }
+        else{
+            //console.log(user+ " 2 ");
+            passport.authenticate("local")(req,res, ()=>{
+                res.redirect("/secrets");
+            });
+        }
+    });
+
 });
 
+/* app.post("/login", async (req,res)=>{
+    
+    const user = new User({
+        username: req.body.username,
+        password: req.body.password
+    });
+
+    req.login(user, (err)=>{
+        if(err){
+            console.log(err+" This is Error Page");
+            res.redirect("/login");
+        }
+        else{
+            passport.authenticate("local")(req,res, ()=>{
+                res.redirect("/secrets");
+            });
+        }
+    });
+
+}); */
+
+app.post("/login", passport.authenticate("local"), (req, res) => {
+    const user = new User({
+        username: req.body.username,
+        password: req.body.password     
+    });
+    req.login(user, (err)=> {
+        if(err) {
+            console.log(err);
+        } else {
+            res.redirect("/secrets");
+        }
+    });
+});
 
 
 
