@@ -8,6 +8,7 @@ const passport = require('passport');
 const passportLocalMongoose = require('passport-local-mongoose');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const findOrCreate = require('mongoose-findorcreate');
+const FacebookStrategy = require('passport-facebook');
 
 
 
@@ -58,6 +59,12 @@ const userSchema = new mongoose.Schema ({
     password: {
         type: String,
         //required: [true, 'Can not allow null password']
+    },
+    googleId: {
+        type: String
+    },
+    facebookId:{
+        type: String
     }
 });
 
@@ -110,6 +117,30 @@ passport.use(new GoogleStrategy({
   }
 ));
 
+
+passport.use(new FacebookStrategy({
+    clientID: process.env.FACEBOOK_APP_ID,
+    clientSecret: process.env.FACEBOOK_APP_SECRET,
+    callbackURL: "http://localhost:3000/auth/facebook/secrets"
+  },
+  function(accessToken, refreshToken, profile, cb) {
+    User.findOne({ googleId: profile.id }).then((foundUser) => {
+        if (foundUser) {
+          return foundUser;
+        } else {
+          const newUser = new User({
+            facebookId: profile.id
+          });
+          return newUser.save();
+        }
+      }).then((user) => {
+        return cb(null, user);
+      }).catch((err) => {
+        return cb(err);
+      });
+  }
+));
+
 //Render the Home page while someone hits the base URI
 app.get("/", async (req, res)=>{
     try {
@@ -123,13 +154,26 @@ app.get("/", async (req, res)=>{
 app.get("/auth/google",
   passport.authenticate("google", { scope: ["profile"] }));
 
-
+//Renders the secrets page only if Google OAuth can verify the login and call back this route
 app.get("/auth/google/secrets", 
   passport.authenticate("google", { failureRedirect: "/login" }),
   function(req, res) {
     // Successful authentication, redirect home.
     res.redirect("/secrets");
   });
+
+//Renders the Facebook OAuth page for logging through facebook
+app.get('/auth/facebook',
+  passport.authenticate('facebook'));
+
+//Facebooks calls this route upon successful OAuth call back.
+app.get('/auth/facebook/secrets',
+  passport.authenticate('facebook', { failureRedirect: '/login' }),
+  function(req, res) {
+    // Successful authentication, redirect home.
+    res.redirect('/secrets');
+});
+
 
 //Render the Login page while someone hits the Login Route
 app.get("/login", async (req, res)=>{
