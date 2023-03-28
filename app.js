@@ -8,7 +8,7 @@ const passport = require('passport');
 const passportLocalMongoose = require('passport-local-mongoose');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const findOrCreate = require('mongoose-findorcreate');
-const FacebookStrategy = require('passport-facebook');
+const FacebookStrategy = require('passport-facebook').Strategy;
 
 
 
@@ -64,6 +64,9 @@ const userSchema = new mongoose.Schema ({
         type: String
     },
     facebookId:{
+        type: String
+    },
+    secret: {
         type: String
     }
 });
@@ -121,7 +124,7 @@ passport.use(new GoogleStrategy({
 passport.use(new FacebookStrategy({
     clientID: process.env.FACEBOOK_APP_ID,
     clientSecret: process.env.FACEBOOK_APP_SECRET,
-    callbackURL: "http://localhost:3000/auth/facebook/secrets"
+    callbackURL: "https://localhost:2933/auth/facebook/secrets"
   },
   function(accessToken, refreshToken, profile, cb) {
     User.findOne({ googleId: profile.id }).then((foundUser) => {
@@ -141,7 +144,7 @@ passport.use(new FacebookStrategy({
   }
 ));
 
-//Render the Home page while someone hits the base URI
+///////////////  Home Route   ///////////////////////
 app.get("/", async (req, res)=>{
     try {
         res.render("home");    
@@ -150,7 +153,7 @@ app.get("/", async (req, res)=>{
     }    
 });
 
-//Helps authenticate against the Google sign page
+////////////// GOOGLE OAUTH ROUTE /////////////////////
 app.get("/auth/google",
   passport.authenticate("google", { scope: ["profile"] }));
 
@@ -162,9 +165,9 @@ app.get("/auth/google/secrets",
     res.redirect("/secrets");
   });
 
-//Renders the Facebook OAuth page for logging through facebook
+////////////// FACEBOOK OAUTH ROUTE /////////////////////
 app.get('/auth/facebook',
-  passport.authenticate('facebook'));
+  passport.authenticate('facebook',{ scope: ['public_profile'] }));
 
 //Facebooks calls this route upon successful OAuth call back.
 app.get('/auth/facebook/secrets',
@@ -175,31 +178,116 @@ app.get('/auth/facebook/secrets',
 });
 
 
-//Render the Login page while someone hits the Login Route
-app.get("/login", async (req, res)=>{
-    res.render("login");
-});
+////////////// GITHUB OAUTH ROUTE /////////////////////
 
-//Render the Register page while someone hits the Register Route
-app.get("/register", async (req, res)=>{
-    res.render("register");
-});
 
-//Render the Logout page while someone hits the Logout Route
-app.get("/logout", async (req, res)=>{
-    req.logout((err)=>{
-        if (err) { return next(err); }
-        res.redirect('/');
+
+//// SUBMIT ROUTE
+
+app.route("/submit")
+
+    .get(async (req, res)=>{
+        if (req.isAuthenticated()){
+            res.render("submit");
+        }else{
+            res.redirect("/login");
+        }
+        
+    })
+
+    .post(async (req, res)=>{
+        const submittedSecret = req.body.secret;
+        console.log(req.user);
+        try {
+            const foundUser = await User.findById(req.user.id);    
+            if (foundUser){
+                foundUser.secret = submittedSecret;
+                foundUser.save(function(){
+                    res.redirect("/secrets");
+                });
+                    // if (err){
+                    //     console.log(err);
+                    // }else{
+                    //     res.redirect("/secrets");
+                    // }
+            }
+        } catch (error) {
+            console.log(error);
+        }
     });
-});
 
-//Render the Submit secrets page while someone hits the Submit Route
-app.get("/submit", async (req, res)=>{
-    res.render("submit");
-});
+///// REGISTER ROUTE
 
-//Render the Secrets page only if someone's Authenticated with Passport JS middleware
+app.route("/register")
 
+    .get(async (req, res)=>{
+        res.render("register");
+    })
+
+    .post(async (req,res)=>{
+        const userEmail = req.body.username;
+        const userPassword = req.body.password;
+        console.log("User provided following inputs -->"+userEmail+" and "+userPassword);
+        /* try {
+            const registrationResult = User.register({username: userEmail}, userPassword);
+            console.log(registrationResult + "2");
+            passport.authenticate("local")(req, res, function(){
+                res.redirect("/secrets");
+            });
+        } catch (error) {
+            console.log(error+"I'm in Error Catch Mode");
+            res.redirect("/register");
+        } */
+    
+        User.register({username: userEmail}, userPassword, (err, user)=>{
+            if(err){
+                console.log(err);
+                res.redirect("/register");
+            }
+            else{
+                //console.log(user+ " 2 ");
+                passport.authenticate("local")(req,res, ()=>{
+                    res.redirect("/secrets");
+                });
+            }
+        });
+    
+    });
+
+
+///// LOGIN ROUTE
+
+app.route("/login")
+
+    .get(async (req, res)=>{
+        res.render("login");
+    })
+
+    .post(passport.authenticate("local"), (req, res) => {
+        const user = new User({
+            username: req.body.username,
+            password: req.body.password     
+        });
+        req.login(user, (err)=> {
+            if(err) {
+                console.log(err);
+            } else {
+                res.redirect("/secrets");
+            }
+        });
+    });
+
+
+/////// LOGOUT ROUTE
+app.post("/logout", function(req, res, next){
+    req.logout((err)=> {
+      if (err) { return next(err); }
+      res.redirect('/');
+    });
+  });
+    
+
+/////// SECRETS ROUTE
 app.get("/secrets", async (req,res)=>{
     if (req.isAuthenticated()){
         res.render("secrets");
@@ -210,35 +298,7 @@ app.get("/secrets", async (req,res)=>{
 
 //Accept the login credentials and register them post page upon submissions
 
-app.post("/register", async (req,res)=>{
-    const userEmail = req.body.username;
-    const userPassword = req.body.password;
-    console.log("User provided following inputs -->"+userEmail+" and "+userPassword);
-    /* try {
-        const registrationResult = User.register({username: userEmail}, userPassword);
-        console.log(registrationResult + "2");
-        passport.authenticate("local")(req, res, function(){
-            res.redirect("/secrets");
-        });
-    } catch (error) {
-        console.log(error+"I'm in Error Catch Mode");
-        res.redirect("/register");
-    } */
 
-    User.register({username: userEmail}, userPassword, (err, user)=>{
-        if(err){
-            console.log(err);
-            res.redirect("/register");
-        }
-        else{
-            //console.log(user+ " 2 ");
-            passport.authenticate("local")(req,res, ()=>{
-                res.redirect("/secrets");
-            });
-        }
-    });
-
-});
 
 /* app.post("/login", async (req,res)=>{
     
@@ -261,21 +321,9 @@ app.post("/register", async (req,res)=>{
 
 }); */
 
-app.post("/login", passport.authenticate("local"), (req, res) => {
-    const user = new User({
-        username: req.body.username,
-        password: req.body.password     
-    });
-    req.login(user, (err)=> {
-        if(err) {
-            console.log(err);
-        } else {
-            res.redirect("/secrets");
-        }
-    });
-});
 
 
+// BIGBOSS is WATCHING you from CHANNEL 3000
 
 app.listen(port, function(){
     console.log("Hasmukh's Secrets Authentication App listening on "+port);
