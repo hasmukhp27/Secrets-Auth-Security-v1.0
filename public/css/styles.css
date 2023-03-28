@@ -3,6 +3,10 @@ body {
   background-color: #E8ECEF;
 }
 
+button {
+  margin-top: 10px;
+}
+
 .centered {
     padding-top: 200px;
     text-align: center;
@@ -13,4 +17,22 @@ body {
   font-size: 2rem;
   color: #fff;
   background-color: #000;
+}
+
+.btn-forms {
+  display: inline-block;
+}
+
+.logout-btn {
+  float: left;
+}
+
+.submit-secret-btn {
+  margin-top: 0.55rem;
+  float: right;
+}
+
+.btn {
+  margin-left: 0.5rem;
+  margin-right: 0.5rem;
 }
